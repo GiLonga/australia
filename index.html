@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Melbourne in macchina</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:ital,wght@0,400;0,500;0,600;1,500&display=swap" rel="stylesheet">
+<style>
+/* VOICE: friendly road-trip guide, practical, shared between two travellers
+   IDEA: a touring road map of Victoria with numbered stops, like a glovebox map you can scribble on
+   PICTURE: large zoomable map: real coastline, highways, the Great Ocean Road in red
+   COLOUR and TYPE: Southern Ocean blue, pale eucalyptus land, road-sign yellow markers; Barlow Condensed + Barlow
+   LAYOUT: title band, full-width map with zoom controls, then stop cards with prices, votes and comments */
+:root{color-scheme:light dark;
+--sea:light-dark(#a9d3e6,#0b2a3b);--land:light-dark(#f2f0e6,#1e2a24);--coast:light-dark(#8fb9cc,#2f5565);
+--park:light-dark(#3f7a45,#8cc492);--rd:light-dark(#f4b860,#a0763a);--rd2:light-dark(#ffffff,#46524c);
+--band:light-dark(#0f4c6b,#082a3d);--bg:light-dark(#ffffff,#0e1a22);--ink:light-dark(#10222c,#e9f0f3);--mut:light-dark(#4a5d66,#a7b7bf);
+--card:light-dark(#f3f7f8,#15252f);--line:light-dark(#d8e2e6,#2a3d48);
+--acc:#ffc629;--accInk:#1b1a12;--road:light-dark(#c8402a,#ff7a5c)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Barlow,system-ui,sans-serif;overflow-x:clip}
+.band{padding:clamp(28px,4vw,56px) max(5vw,16px)}
+.wrap{max-width:1240px;margin:0 auto}
+header.band{background:var(--band);color:#fff;padding-bottom:20px}
+h1,h2,h3{font-family:"Barlow Condensed",sans-serif;line-height:1.05;text-wrap:balance;margin:0}
+h1{font-size:clamp(34px,5vw,52px)}
+h2{font-size:clamp(28px,3.5vw,36px)}
+.lede{max-width:66ch;margin:10px 0 18px;color:#d5e6ee;font-size:17px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px}
+.bar button{font:600 16px Barlow,sans-serif;min-height:44px;padding:0 16px;border-radius:999px;border:2px solid #ffffff55;background:transparent;color:#fff;cursor:pointer}
+.bar.days{margin-top:-6px}
+.bar .lbl{font-weight:600;color:#d5e6ee;margin-right:2px}
+.tips span.day{background:var(--acc);color:var(--accInk);border-color:var(--acc)}
+.bar button[aria-pressed=true]{background:var(--acc);border-color:var(--acc);color:var(--accInk)}
+button:focus-visible,a:focus-visible,textarea:focus-visible,.card:focus-visible,.mk:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.mapwrap{position:relative;border-radius:14px;overflow:hidden;background:var(--sea);height:min(68vh,620px);min-height:380px}
+#map{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}
+#map:active{cursor:grabbing}
+.land{fill:var(--land);stroke:var(--coast);stroke-width:1.2}
+.r0{fill:none;stroke:var(--rd2);stroke-width:1.6}
+.r1{fill:none;stroke:var(--rd);stroke-width:2.4}
+.gor{fill:none;stroke:var(--road);stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
+.land,.r0,.r1,.gor{vector-effect:non-scaling-stroke}
+.town{font:500 13px Barlow,sans-serif;fill:var(--ink);paint-order:stroke;stroke:var(--land);stroke-width:3px;pointer-events:none}
+.town.big{font:600 16px Barlow,sans-serif}
+.dot{fill:var(--ink)}
+.park{font:italic 500 13px Barlow,sans-serif;fill:var(--park);paint-order:stroke;stroke:var(--land);stroke-width:3px;pointer-events:none}
+.sealbl{font:italic 500 15px Barlow,sans-serif;fill:light-dark(#4d8aa6,#4e7d92);pointer-events:none;letter-spacing:.04em}
+.mk{cursor:pointer}
+.mk circle{fill:var(--acc);stroke:#1b1a12;stroke-width:2}
+.mk text{font:700 15px "Barlow Condensed",sans-serif;fill:var(--accInk);text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.mk.city circle{fill:#fff}
+.mk.nic circle{fill:#7cc47f}
+.mk.ani circle{fill:#f29a5e}
+.mk.on circle{fill:var(--road);stroke:#fff;stroke-width:3}.mk.on text{fill:#fff}
+.mk.off{opacity:.2}
+.ctl{position:absolute;right:12px;top:12px;display:flex;flex-direction:column;gap:6px}
+.ctl button{width:44px;height:44px;border-radius:10px;border:0;background:var(--bg);color:var(--ink);font:600 22px Barlow,sans-serif;cursor:pointer;box-shadow:0 1px 4px #0004}
+.hint{position:absolute;left:12px;bottom:10px;font-size:13px;color:var(--ink);background:color-mix(in srgb,var(--bg) 85%,transparent);padding:4px 10px;border-radius:8px}
+.legend{position:absolute;left:12px;top:12px;font-size:13px;background:color-mix(in srgb,var(--bg) 88%,transparent);color:var(--ink);padding:6px 10px;border-radius:8px;display:flex;flex-direction:column;gap:2px}
+.legend i{display:inline-block;width:22px;height:4px;border-radius:2px;vertical-align:middle;margin-right:6px}
+.cap{margin:12px 0 0;color:#fff;min-height:28px;font-size:17px}
+.cap b{font-family:"Barlow Condensed",sans-serif;font-size:21px;margin-right:8px}
+.cap span{color:#cfe2ea}
+.head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:end;gap:12px;margin-bottom:16px}
+.sort{display:flex;gap:6px;flex-wrap:wrap}
+.sort button{font:600 15px Barlow,sans-serif;min-height:44px;padding:0 14px;border-radius:10px;border:2px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.sort button[aria-pressed=true]{border-color:var(--ink)}
+.status{font-size:14px;color:var(--mut);margin:0 0 14px}
+.nick{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:-4px 0 18px;font-size:15px}
+.nick button{font:600 15px Barlow,sans-serif;min-height:44px;padding:0 16px;border-radius:10px;border:2px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.nick button.go{background:var(--band);border-color:var(--band);color:#fff}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,350px),1fr));gap:16px}
+.card{background:var(--card);border:2px solid transparent;border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px}
+.card.on{border-color:var(--road)}
+.card.hide{display:none}
+.top{display:flex;gap:12px;align-items:center;cursor:pointer}
+.num{flex:none;width:36px;height:36px;border-radius:50%;background:var(--acc);color:var(--accInk);display:grid;place-items:center;font:700 18px "Barlow Condensed",sans-serif;border:2px solid #1b1a12}
+.card.city .num{background:#fff}
+.card.nic .num{background:#7cc47f}
+.card.ani .num{background:#f29a5e}
+h3{font-size:25px}
+.time{color:var(--mut);font-size:15px;white-space:nowrap}
+.card p{margin:0}
+.card ul{margin:0;padding-left:18px}
+.tips{display:flex;flex-wrap:wrap;gap:6px}
+.tips span{font-size:14px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--bg);border:1px solid var(--line)}
+table{border-collapse:collapse;width:100%;font-size:15px}
+td{padding:5px 0;border-top:1px solid var(--line);vertical-align:top}
+td:last-child{text-align:right;white-space:nowrap;font-weight:600;padding-left:10px}
+.free{color:var(--park)}
+.pnote{font-size:13px;color:var(--mut)}
+.rate{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;border-top:1px solid var(--line);padding-top:10px}
+.stars{display:flex}
+.stars button{width:38px;height:44px;border:0;background:none;font-size:26px;line-height:1;cursor:pointer;color:var(--line);padding:0}
+.stars button.f{color:#e9a400}
+.avg{font-size:14px;color:var(--mut)}
+details{border-top:1px solid var(--line);padding-top:8px}
+summary{cursor:pointer;font-weight:600;min-height:32px;display:flex;align-items:center}
+.cm{list-style:none;padding:0!important;margin:6px 0 8px!important;display:flex;flex-direction:column;gap:8px}
+.cm li{background:var(--bg);border-radius:10px;padding:8px 10px;font-size:15px}
+.cm .who{font-size:13px;color:var(--mut);display:flex;justify-content:space-between;gap:8px}
+.cm .who button{border:0;background:none;color:var(--mut);cursor:pointer;font-size:13px;min-height:28px;text-decoration:underline}
+.cm .txt{white-space:pre-wrap;overflow-wrap:anywhere}
+form{display:flex;flex-direction:column;gap:6px}
+textarea{font:16px Barlow,sans-serif;padding:8px 10px;border-radius:10px;border:2px solid var(--line);background:var(--bg);color:var(--ink);resize:vertical;min-height:64px}
+form button{align-self:flex-end;min-height:44px;padding:0 16px;border-radius:10px;border:0;background:var(--band);color:#fff;font:600 15px Barlow,sans-serif;cursor:pointer}
+.links{display:flex;flex-wrap:wrap;gap:8px;margin-top:auto;padding-top:4px}
+.links a{display:inline-flex;align-items:center;min-height:44px;padding:0 14px;border-radius:10px;background:var(--band);color:#fff;text-decoration:none;font-weight:600;font-size:15px}
+.links a.alt{background:transparent;color:var(--ink);border:2px solid var(--line)}
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:16px;margin:16px 0 0;padding:0;list-style:none}
+.notes li{border-top:3px solid var(--acc);padding-top:10px}
+.notes b{display:block;font-family:"Barlow Condensed",sans-serif;font-size:20px}
+footer{color:var(--mut);font-size:14px;padding-top:0}
+@media(max-width:600px){.legend{display:none}.hint{font-size:12px}}
+</style>
+</head>
+<body>
+<header class="band">
+ <div class="wrap">
+  <h1>Melbourne in macchina</h1>
+  <p class="lede">I posti migliori tra città, costa e parchi del Victoria, più una selezione di natura meno battuta, con i prezzi dei biglietti. Potete votare ogni posto e lasciare commenti.</p>
+  <div class="bar" role="group" aria-label="Filtra i posti">
+   <button data-f="all" aria-pressed="true">Tutti</button>
+   <button data-f="gor" aria-pressed="false">Great Ocean Road</button>
+   <button data-f="nat" aria-pressed="false">Natura e parchi</button>
+   <button data-f="food" aria-pressed="false">Vino e relax</button>
+   <button data-f="citta" aria-pressed="false">In città</button>
+   <button data-f="nic" aria-pressed="false">Natura di nicchia</button>
+   <button data-f="ani" aria-pressed="false">Animali</button>
+  </div>
+  <div class="bar days" role="group" aria-label="Programma NAZ-ILA"><span class="lbl">Programma NAZ-ILA:</span>
+   <button data-f="d20" aria-pressed="false">Dom 20</button>
+   <button data-f="d21" aria-pressed="false">Lun 21</button>
+   <button data-f="d22" aria-pressed="false">Mar 22</button>
+   <button data-f="d23" aria-pressed="false">Mer 23</button>
+  </div>
+  <div class="mapwrap">
+   <svg id="map" role="img" aria-label="Mappa del Victoria con i posti numerati"></svg>
+   <div class="legend"><span><i style="background:var(--road)"></i>Great Ocean Road</span><span><i style="background:var(--rd)"></i>Autostrade e statali</span><span><i style="background:#7cc47f;height:10px;width:10px;border-radius:50%;margin-left:6px;margin-right:12px"></i>Natura di nicchia</span><span><i style="background:#f29a5e;height:10px;width:10px;border-radius:50%;margin-left:6px;margin-right:12px"></i>Animali</span></div>
+   <div class="ctl"><button id="zin" aria-label="Zoom avanti">+</button><button id="zout" aria-label="Zoom indietro">−</button><button id="zreset" aria-label="Vista intera" style="font-size:15px">⤢</button></div>
+   <div class="hint">Trascina per spostarti · Ctrl + rotella o due dita per lo zoom</div>
+  </div>
+  <div class="cap" id="cap" aria-live="polite"><span>Tocca un numero per zoomare sul posto.</span></div>
+ </div>
+</header>
+
+<main class="band">
+ <div class="wrap">
+  <div class="head"><h2>Le tappe</h2>
+   <div class="sort" role="group" aria-label="Ordina"><button data-s="n" aria-pressed="true">Ordine della mappa</button><button data-s="v" aria-pressed="false">Voto: dal più alto al più basso</button></div>
+  </div>
+  <p class="status" id="status">Caricamento di voti e commenti…</p>
+  <div class="nick" id="nick" hidden><span id="nickTxt"></span><button type="button" id="authBtn"></button></div>
+  <div class="grid" id="grid"></div>
+ </div>
+</main>
+
+<section class="band" style="padding-top:0">
+ <div class="wrap">
+  <h2>Da sapere per dicembre–gennaio</h2>
+  <ul class="notes">
+   <li><b>Altissima stagione</b>Sulla Great Ocean Road c'è molto traffico: partite presto la mattina.</li>
+   <li><b>Prenotate presto</b>Gli alloggi alla Prom e sulla costa, la Penguin Parade e le terme si esauriscono.</li>
+   <li><b>Incendi</b>Prima di andare nei parchi controllate l'app VicEmergency.</li>
+   <li><b>Meteo che cambia</b>Si può passare da 40° a 18° nello stesso giorno: portatevi sempre una felpa.</li>
+  </ul>
+ </div>
+</section>
+<footer class="band"><div class="wrap">Prezzi in dollari australiani (AUD) per un adulto, controllati sui siti ufficiali a novembre 2026: possono cambiare, verificate prima di prenotare. I tempi di guida partono dal centro di Melbourne e non tengono conto del traffico. Dati della mappa: OpenStreetMap (costa, tramite geo-maps) e Natural Earth (strade).</div></footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+{
+const P=[
+ {n:1,c:'citta',name:'Melbourne città',lat:-37.814,lon:144.963,z:6,time:'Centro',desc:'Da girare a piedi o in tram, che nel CBD è gratuito.',list:['Laneways e caffè del CBD (Degraves St, Hosier Lane)','Queen Victoria Market','Royal Botanic Gardens','NGV, la galleria nazionale','St Kilda: il molo con i pinguini la sera','Le cabine colorate di Brighton Beach','Fitzroy: locali e street art'],tips:['Tram gratis nel CBD','Prenota i pinguini'],pnote:'Il Queen Vic Market è chiuso il lunedì e il mercoledì. Per i pinguini di St Kilda la prenotazione online è obbligatoria e i posti finiscono presto.',price:[['NGV, Botanic Gardens, Queen Vic Market','Gratis'],['Pinguini di St Kilda (con prenotazione)','Gratis'],['Tram nella Free Tram Zone','Gratis']],q:'Melbourne Hosier Lane'},
+ {n:2,c:'gor',name:'Torquay e Bells Beach',lat:-38.345,lon:144.31,z:4.5,time:'1 h 15',desc:"L'inizio della Great Ocean Road, la capitale australiana del surf. Bells Beach è a pochi minuti.",tips:['Prima tappa','Surf'],price:[['Spiagge e belvedere','Gratis']],q:'Bells Beach Torquay'},
+ {n:3,c:'gor',name:'Lorne ed Erskine Falls',lat:-38.54,lon:143.975,z:4.5,time:'2 h 15',desc:"Paesino sul mare con una bella spiaggia e, nell'entroterra, le cascate tra le felci.",tips:['Pausa pranzo'],price:[['Spiaggia ed Erskine Falls (belvedere)','Gratis']],pnote:"Dopo l'alluvione di gennaio 2026 la base delle Erskine Falls è chiusa: si vedono dal belvedere superiore.",q:'Lorne Victoria Erskine Falls'},
+ {n:4,c:'gor',name:'Apollo Bay e Kennett River',lat:-38.755,lon:143.67,z:4.5,time:'3 h',desc:"La strada più panoramica della costa. A Kennett River vedrete koala e pappagalli lungo Grey River Road.",tips:['Koala','Buono per dormire'],price:[['Koala a Kennett River','Gratis']],q:'Kennett River koala Great Ocean Road'},
+ {n:5,c:'gor',name:'Cape Otway',lat:-38.857,lon:143.512,z:4.5,time:'3 h 20',desc:'Il faro più antico della terraferma e i koala selvatici sugli eucalipti lungo Lighthouse Road.',tips:['Koala selvatici','Faro'],price:[['Cape Otway Lightstation (prezzo pieno $22)','$11']],pnote:'Prezzo scontato finché la torre del faro è chiusa per restauri. Si paga all\'ingresso.',q:'Cape Otway lighthouse'},
+ {n:6,c:'gor',name:'Twelve Apostles e Loch Ard Gorge',lat:-38.665,lon:143.1,z:4.5,time:'3 h 15 (entroterra)',desc:"I faraglioni simbolo del Victoria. Loch Ard Gorge è a 3 km e per molti è ancora più bella. Scendete anche dai Gibson Steps fino alla spiaggia, ai piedi dei faraglioni.",tips:['Prenota l\'arrivo','Alba o tramonto','Port Campbell per dormire'],price:[['Twelve Apostles (con prenotazione dell\'arrivo)','Vedi sito'],['Gibson Steps e Loch Ard Gorge','Gratis']],pnote:"Dal 16 ottobre 2026, per entrare nel nuovo visitor centre dei Twelve Apostles bisogna prenotare un orario di arrivo. Gibson Steps e Loch Ard Gorge restano ad accesso libero, ma le scale per la spiaggia di Loch Ard sono chiuse.",q:'Twelve Apostles Great Ocean Road'},
+ {n:7,c:'nat',name:'Wilsons Promontory',lat:-39.04,lon:146.31,z:4,time:'3 h',desc:"Probabilmente la natura più bella del Victoria: Squeaky Beach, la salita al Mount Oberon e tanti wombat a Tidal River.",tips:['Wombat','Prenota alloggio'],price:[['Ingresso al parco','Gratis'],['Campeggio o alloggio a Tidal River','A pagamento']],q:'Wilsons Promontory Squeaky Beach'},
+ {n:8,c:'nat',name:'Phillip Island',lat:-38.51,lon:145.15,z:4.5,time:'2 h',desc:"La Penguin Parade al tramonto, con i pinguini che tornano a riva, e le scogliere di Cape Woolamai.",tips:['Prenota la Parade','Al tramonto','Koala'],price:[['Koala Conservation Reserve (passerelle tra gli alberi)','$17,50'],['Penguin Parade, General Viewing','$34'],['Penguins Plus (posti a gradoni)','$93'],['Underground Viewing','$103']],pnote:'Arrivate almeno un\'ora prima dei pinguini. Parcheggio gratuito.',q:'Phillip Island Penguin Parade'},
+ {n:9,c:'nat',name:'Grampians',lat:-37.15,lon:142.52,z:4,time:'3 h',desc:"Montagne di arenaria con il belvedere del Pinnacle, il Grand Canyon e le Venus Baths. Al tramonto, a Halls Gap, ci sono canguri dappertutto.",tips:['Canguri','Escursioni'],price:[['Parco, sentieri e belvedere','Gratis']],pnote:'Le MacKenzie Falls sono chiuse per lavori fino a fine 2026, e alcuni sentieri sono ancora chiusi dopo gli incendi del 2024-25.',q:'Grampians Pinnacle lookout'},
+ {n:10,c:'food',name:'Mornington Peninsula',lat:-38.41,lon:144.875,z:4.5,time:'1 h – 1 h 30',desc:"Peninsula Hot Springs, le spiagge oceaniche di Sorrento, il faro di Cape Schanck e le cantine dell'interno.",tips:['Prenota le terme','Vino'],price:[['Hot Springs, Bath House (feriale / weekend)','$80 / $90'],['Hot Springs prima delle 9 o dopo le 18','$60 / $70'],['Spiagge e Cape Schanck','Gratis']],pnote:'Ai giorni festivi le terme applicano un supplemento del 10%.',q:'Peninsula Hot Springs Mornington'},
+ {n:11,c:'food',name:'Yarra Valley',lat:-37.655,lon:145.52,z:4.5,time:'1 h',desc:"Cantine, cioccolateria e formaggi. Al Healesville Sanctuary vedete da vicino gli animali australiani, ornitorinco compreso.",tips:['Wine tasting','Healesville Sanctuary'],price:[['Healesville Sanctuary','da $51,50'],['Degustazioni nelle cantine','Variabile']],q:'Yarra Valley vineyards'},
+ {n:12,c:'nat',name:'Dandenong Ranges',lat:-37.905,lon:145.355,z:4.5,time:'1 h',desc:'Foresta pluviale di felci giganti, il trenino a vapore Puffing Billy e la scalinata dei 1000 Steps.',tips:['Puffing Billy','Mezza giornata'],price:[['Puffing Billy, Belgrave–Lakeside A/R','circa $66'],['1000 Steps e foresta','Gratis']],pnote:'Puffing Billy va prenotato online.',q:'Puffing Billy Dandenong Ranges'},
+ {n:13,c:'nic',name:'Lake Elizabeth',lat:-38.553,lon:143.745,z:5,time:'2 h',desc:"Un lago nato da una frana nel 1952, con tronchi sommersi e felci arboree. È uno dei pochi posti dove si vedono ornitorinchi selvatici, all'alba o al tramonto.",tips:['Ornitorinchi','Alba o tramonto','Lucciole la sera'],price:[['Sentiero intorno al lago (circa 4 km)','Gratis'],['Giro in canoa con guida per gli ornitorinchi','A pagamento']],pnote:'Si trova a 10 minuti da Forrest, nelle Otway Ranges.',q:'Lake Elizabeth Forrest Otways'},
+ {n:14,c:'nic',name:'Hopetoun Falls e Redwoods',lat:-38.662,lon:143.588,z:5,time:'2 h 45',desc:"Nell'entroterra delle Otways: una cascata tra le felci e, a pochi minuti, un bosco di sequoie californiane piantate negli anni '30 lungo il fiume Aire.",tips:['Foresta pluviale','Abbinabile ad Apollo Bay'],price:[['Cascate e bosco di sequoie','Gratis']],q:'Hopetoun Falls Otway Redwoods'},
+ {n:15,c:'nic',name:'Bay of Islands e Bay of Martyrs',lat:-38.6,lon:142.86,z:5,time:'3 h 30 (entroterra)',desc:'Faraglioni e baie come ai Twelve Apostles, ma con molta meno gente. Il London Arch (n. 37) e The Grotto (n. 38) sono a pochi minuti. Ottimi per il tramonto, dopo Port Campbell verso Peterborough.',tips:['Tramonto','Poca gente'],price:[['Belvedere','Gratis']],q:'Bay of Islands Peterborough Victoria'},
+ {n:16,c:'nic',name:'Tower Hill',lat:-38.318,lon:142.365,z:5,time:'3 h 15',desc:'Un vulcano spento con un lago nel cratere, dove emù, koala e canguri girano liberi. Sentieri brevi, tra cui la salita al Peak Climb.',tips:['Emù e koala','Vulcano'],price:[['Riserva e sentieri','Gratis']],pnote:'La riserva è sempre aperta; il visitor centre apre dalle 10 alle 16.',q:'Tower Hill Wildlife Reserve'},
+ {n:17,c:'nic',name:'Cape Bridgewater',lat:-38.37,lon:141.4,z:5,time:'4 h 30',desc:"Le scogliere più alte del Victoria, una colonia di otarie, i soffioni nella roccia vulcanica e la 'foresta pietrificata' di calcare.",tips:['Otarie','Scogliere','Vale una notte a Portland'],price:[['Seal Walk, Blowholes e Petrified Forest','Gratis']],pnote:'Alla colonia di otarie si arriva con un sentiero di circa 2-3 ore andata e ritorno.',q:'Cape Bridgewater seal colony'},
+ {n:18,c:'nic',name:'Werribee Gorge',lat:-37.66,lon:144.35,z:5,time:'1 h',desc:'Una gola selvaggia a un\'ora da Melbourne: un anello tra scogliere e fiume con un tratto da fare tra i massi, con pozze dove fare il bagno.',tips:['Escursione','Mezza giornata'],price:[['Parco e sentieri','Gratis']],pnote:'Il circuito è di circa 8,5–10 km, di difficoltà media. Servono scarpe da trekking.',q:'Werribee Gorge State Park'},
+ {n:19,c:'nic',name:'Cathedral Range',lat:-37.38,lon:145.75,z:5,time:'1 h 45',desc:'Una cresta rocciosa e frastagliata lunga 7 km. Si percorre il Razorback, oppure si sale allo Sugarloaf Peak passando per le Wells Cave.',tips:['Escursione impegnativa','Panorami'],price:[['Parco e sentieri','Gratis']],pnote:'Il parco è stato chiuso per un incendio a gennaio 2026: verificate le condizioni sul sito di Parks Victoria prima di andare.',q:'Cathedral Range Razorback'},
+ {n:20,c:'nic',name:'Tarra-Bulga',lat:-38.426,lon:146.572,z:5,time:'2 h 30',desc:'Foresta pluviale temperata con eucalipti giganti e faggi antichi. Si cammina sul ponte sospeso Corrigan, sopra la gola di felci, e si vedono le Tarra e Cyathea Falls.',tips:['Ponte sospeso','Uccelli lira'],price:[['Parco e sentieri','Gratis']],q:'Corrigan Suspension Bridge Tarra Bulga'},
+ {n:21,c:'nic',name:'Costa del Bunurong',lat:-38.665,lon:145.665,z:5,time:'2 h',desc:"Tra Inverloch e Cape Paterson: l'Eagles Nest, pozze di marea e una costa dove sono stati trovati fossili di dinosauri. Andateci con la bassa marea.",tips:['Bassa marea','Pozze di marea'],price:[['Spiagge e belvedere','Gratis']],q:'Eagles Nest Inverloch'},
+ {n:22,c:'nic',name:'Mount Buffalo',lat:-36.73,lon:146.79,z:5,time:'3 h 45',desc:"Un altopiano di granito sopra le Alpi: la Gorge con scogliere di 200 m, The Horn al tramonto e il bagno nel Lake Catani. D'estate fa più fresco che a valle.",tips:['Alpi','Fresco in estate','Base a Bright'],price:[['Visita in giornata','Gratis']],q:'Mount Buffalo Gorge'},
+ {n:23,c:'nic',name:'Lake Tyrrell',lat:-35.33,lon:142.82,z:5,time:'4 h 30 – 5 h',desc:"Il più grande lago salato del Victoria, nel Mallee. Al tramonto si colora di rosa e lilla, e di notte il cielo stellato è spettacolare.",tips:['Tramonto e stelle','Molto lontano'],price:[['Lago e passerella','Gratis']],pnote:"D'estate è quasi asciutto e di giorno fa molto caldo: andateci all'alba, al tramonto o di notte. L'effetto specchio c'è soprattutto in inverno.",q:'Lake Tyrrell Sea Lake'},
+ {n:24,c:'ani',name:'Moonlit Sanctuary',lat:-38.205,lon:145.236,z:5,time:'1 h',desc:"Un santuario di animali notturni. La visita da fare è quella serale con le lanterne: quoll, petauri, gufi, canguri e wallaby che si avvicinano, in un'atmosfera magica.",tips:['Tour serale','Abbinabile a Phillip Island'],price:[['Tour serale con lanterne','$75'],['Ingresso diurno (9:30–16)','$37']],pnote:'Il tour serale si fa ogni sera e va prenotato: i posti sono limitati.',q:'Moonlit Sanctuary Pearcedale'},
+ {n:25,c:'ani',name:'Pipistrelli giganti di Yarra Bend',lat:-37.792,lon:145.008,z:6,time:'15 min',desc:"In piena città vive una colonia di volpi volanti, pipistrelli giganti della frutta. D'estate arrivano a decine di migliaia e al tramonto si alzano in volo tutti insieme sopra il fiume Yarra.",tips:['Al tramonto','Gratis','In città'],price:[['Belvedere da Bellbird Picnic Area o Wills St','Gratis']],q:'Yarra Bend flying fox Bellbird picnic area'},
+ {n:26,c:'ani',name:'Canguri di Anglesea',lat:-38.405,lon:144.17,z:5,time:'1 h 30',desc:"Il campo da golf di Anglesea ospita circa 300 canguri grigi selvatici, con i piccoli nel marsupio. Un tour di 25 minuti in golf cart ve li fa vedere da vicino. È di strada per la Great Ocean Road.",tips:['Canguri selvatici','Di strada per la GOR'],price:[['Tour di 25 minuti in golf cart','A pagamento']],pnote:'Prenotate online sul sito dell\'Anglesea Golf Club. I canguri sono più attivi verso sera.',q:'Anglesea Golf Club kangaroo tours'},
+ {n:27,c:'ani',name:'Serendip Sanctuary',lat:-38.0,lon:144.405,z:5,time:'50 min',desc:"Zone umide e prati vicino ai You Yangs, dove emù, canguri e wallaby girano liberi. Dai capanni si osservano oltre 150 specie di uccelli, tra cui le gru brolga.",tips:['Emù','Birdwatching','Gratis'],price:[['Ingresso (8–16)','Gratis']],pnote:'Una parte dei sentieri potrebbe essere chiusa per lavori di miglioramento: controllate il sito di Parks Victoria.',q:'Serendip Sanctuary Lara'},
+ {n:28,c:'ani',name:'Nuotare con delfini e otarie',lat:-38.338,lon:144.742,z:5,time:'1 h 30',desc:"Da Sorrento parte una barca per la baia di Port Phillip: si fa snorkeling con le otarie e, con un po' di fortuna, con i delfini tursiopi selvatici. Ci sono anche i draghi marini.",tips:['Ottobre–aprile','Mezza giornata'],price:[['Con nuotata, adulto','circa $210'],['Solo in barca','circa $95']],pnote:'Se non vedete i delfini potete tornare gratis entro 30 giorni. Prezzi di un rivenditore: verificate con gli operatori di Sorrento.',q:'Sorrento dolphin seal swim'},
+ {n:29,c:'nic',name:'Hanging Rock',lat:-37.33,lon:144.593,z:5,time:'1 h',desc:"Una formazione vulcanica di 6 milioni di anni, misteriosa e piena di passaggi tra le rocce, resa famosa dal film 'Picnic a Hanging Rock'. Dalla cima la vista spazia sulle Macedon Ranges.",tips:['Atmosfera unica','Mezza giornata'],price:[['Ingresso per auto','$15']],pnote:'Il 1° gennaio e il 26 gennaio ci sono le corse dei cavalli e si entra solo con il biglietto delle corse. Si paga solo con carta.',q:'Hanging Rock Macedon Ranges'},
+ {n:30,c:'nic',name:'Point Nepean',lat:-38.307,lon:144.655,z:5,time:'1 h 45',desc:"La punta estrema della penisola di Mornington, tra l'oceano e la baia: forti con tunnel e cannoni, la vecchia stazione di quarantena e la vista sulle correnti di The Rip.",tips:['Storia e oceano','In bici o in navetta'],price:[['Ingresso al parco','Gratis'],['Navetta hop-on hop-off','A pagamento']],pnote:'Dalla Quarantine Station al forte ci sono 3–5 km a piedi; in alternativa c\'è la navetta. Alcune aree sono chiuse per lavori.',q:'Fort Nepean Point Nepean'},
+ {n:31,c:'citta',name:'Southbank e Crown Christmas River Show',lat:-37.8222,lon:144.9585,z:6,time:'In città',desc:"La passeggiata lungo lo Yarra con vista sui grattacieli. Dal 4 al 25 dicembre, ogni sera, davanti al Crown c'è lo spettacolo gratuito di fontane, laser e luci sul fiume, tra Queens Bridge e Kings Bridge.",tips:['Gratis','Sera'],price:[['Christmas River Show (21–23)','Gratis']],q:'Crown Christmas River Show Southbank'},
+ {n:32,c:'nat',name:'Sherbrooke Forest (Grants Picnic Ground)',lat:-37.884,lon:145.349,z:6,time:'1 h',desc:"Foresta pluviale temperata nelle Dandenong. L'Hardy Gully Nature Walk è un anello facile di 20–30 minuti, e intorno all'area picnic si vedono cacatua, kookaburra e rosella.",tips:['Uccelli','Passeggiata facile'],price:[['Parco e sentiero','Gratis']],pnote:'Non date da mangiare agli uccelli: è vietato e fa loro male.',q:'Grants Picnic Ground Kallista'},
+ {n:33,c:'nat',name:'Olinda, Sassafras e SkyHigh',lat:-37.845,lon:145.36,z:6,time:'1 h 10',desc:'I due villaggi più caratteristici delle Dandenong, con sale da tè e negozietti, e il belvedere di SkyHigh sul punto più alto della catena, con vista su Melbourne.',tips:['Panorama','Sale da tè'],price:[['Villaggi','Gratis'],['Ingresso auto a SkyHigh','A pagamento']],q:'SkyHigh Mount Dandenong'},
+ {n:34,c:'food',name:'Riverstone Estate',lat:-37.71,lon:145.415,z:6,time:'1 h',desc:'Una cantina della Yarra Valley con vista sulle colline, per un pranzo o una degustazione nel pomeriggio.',tips:['Pranzo','Degustazione'],price:[['Pranzo e degustazione','Variabile']],pnote:'La posizione sulla mappa è indicativa: usate il link a Google Maps.',q:'Riverstone Estate Yarra Valley'},
+ {n:35,c:'gor',name:'Memorial Arch (Eastern View)',lat:-38.471,lon:144.039,z:6,time:'1 h 45',desc:"L'arco di legno che segna l'ingresso simbolico della Great Ocean Road, costruita dai reduci della Prima guerra mondiale. È una sosta foto veloce.",tips:['Foto','Sosta breve'],price:[['Belvedere','Gratis']],q:'Memorial Arch Eastern View'},
+ {n:36,c:'nic',name:'Beauchamp Falls',lat:-38.652,lon:143.603,z:6,time:'2 h 45',desc:'Una cascata in una gola di felci arboree nelle Otways, vicino al bosco di sequoie. Il sentiero è ripido e richiede circa 1 ora e mezza andata e ritorno.',tips:['Sentiero ripido','Vicino alle Redwoods'],price:[['Sentiero','Gratis']],pnote:'Se siete di corsa, le Hopetoun Falls (n. 14) sono più vicine e il sentiero è più corto.',q:'Beauchamp Falls Otways'},
+ {n:37,c:'gor',name:'London Bridge (London Arch)',lat:-38.6215,lon:142.928,z:7,time:'3 h 30',desc:'Un arco di roccia nel mare: un tempo era collegato alla terraferma da un secondo arco, crollato nel 1990. Ci sono passerelle panoramiche.',tips:['Al mattino presto','Gratis'],price:[['Belvedere','Gratis']],q:'London Arch Port Campbell'},
+ {n:38,c:'gor',name:'The Grotto',lat:-38.6035,lon:142.904,z:7,time:'3 h 30',desc:"Una cavità nella scogliera con una finestra di roccia sull'oceano e una pozza naturale. Si scende con una scala.",tips:['Tramonto','Gratis'],price:[['Belvedere','Gratis']],q:'The Grotto Peterborough'},
+ {n:39,c:'gor',name:'Great Ocean Road Tourist Park',lat:-38.6035,lon:142.874,z:7,time:'3 h 30',desc:'Il posto per dormire a Peterborough, comodo per vedere i faraglioni la mattina presto prima che arrivino i pullman da Melbourne.',tips:['Dormire'],price:[['Pernottamento','Vedi prenotazione']],q:'Great Ocean Road Tourist Park Peterborough'},
+ {n:40,c:'food',name:'Timboon',lat:-38.484,lon:142.979,z:6,time:'3 h 15',desc:"Un paesino dell'entroterra con la distilleria nel vecchio deposito ferroviario e un gelato artigianale. È una buona sosta sulla strada per tornare verso Colac.",tips:['Gelato','Distilleria'],price:[['Degustazioni e gelato','Variabile']],q:'Timboon Railway Shed Distillery'},
+ {n:41,c:'citta',name:'Geelong Waterfront',lat:-38.143,lon:144.362,z:6,time:'1 h',desc:'Il lungomare di Geelong, con le statue di legno dipinte sulle bitte, la ruota panoramica e ristoranti vista baia. È una pausa pranzo comoda sulla strada per l\'aeroporto.',tips:['Pranzo','Passeggiata'],price:[['Lungomare','Gratis']],q:'Geelong Waterfront bollards'}
+];
+const DAYS={d20:{l:'Dom 20',n:[1,31]},d21:{l:'Lun 21',n:[12,32,33,11,34,24,10,30,31]},d22:{l:'Mar 22',n:[2,26,35,3,4,14,36,6,38,39]},d23:{l:'Mer 23',n:[37,15,40,41,27]}};
+const dayOf=n=>Object.values(DAYS).filter(d=>d.n.includes(n)).map(d=>d.l);
+const TOWNS=[['Melbourne',144.963,-37.814,1,1],['Geelong',144.36,-38.15,1,1],['Ballarat',143.85,-37.56,1,1],['Warrnambool',142.48,-38.383,1,1],['Torquay',144.326,-38.331,2],['Anglesea',144.186,-38.407,4],['Lorne',143.977,-38.541,2],['Apollo Bay',143.671,-38.757,2],['Port Campbell',142.995,-38.619,3],['Halls Gap',142.519,-37.137,3],['Healesville',145.514,-37.654,3],['Belgrave',145.355,-37.909,4],['Sorrento',144.741,-38.339,3],['Queenscliff',144.661,-38.267,4],['Frankston',145.125,-38.144,3],['Cowes',145.239,-38.452,3],['Inverloch',145.729,-38.633,4],['Tidal River',146.32,-39.031,3],['Colac',143.585,-38.339,2],['Ararat',142.93,-37.284,2],['St Kilda',144.98,-37.868,6],['Brighton',144.99,-37.918,6],['Fitzroy',144.978,-37.8,7],['Forrest',143.715,-38.522,3],['Beech Forest',143.567,-38.637,4],['Peterborough',142.877,-38.603,3],['Portland',141.604,-38.343,1,1],['Bacchus Marsh',144.44,-37.675,3],['Buxton',145.71,-37.42,3],['Bright',146.96,-36.73,2],['Sea Lake',142.85,-35.5,1],['Traralgon',146.54,-38.195,2],['Mildura',142.16,-34.19,1,1],['Woodend',144.53,-37.355,3],['Lara',144.405,-38.02,4],['Portsea',144.71,-38.32,4],['Olinda',145.367,-37.857,5],['Timboon',142.979,-38.484,4],['Princetown',143.155,-38.697,4]];
+const PARKS=[['Great Otway NP',143.55,-38.66,2],['Grampians NP',142.42,-37.25,1],['Wilsons Promontory NP',146.33,-39.1,1],['Port Campbell NP',143.0,-38.66,4],['Dandenong Ranges NP',145.39,-37.86,4],['Mornington Peninsula NP',144.84,-38.47,4],['Mount Buffalo NP',146.77,-36.78,2],['Cathedral Range SP',145.76,-37.4,3],['Tarra-Bulga NP',146.56,-38.44,3]];
+const GOR=[[144.326,-38.331],[144.25,-38.37],[144.186,-38.402],[144.1,-38.455],[144.02,-38.5],[143.977,-38.537],[143.93,-38.59],[143.89,-38.633],[143.862,-38.664],[143.79,-38.69],[143.71,-38.722],[143.671,-38.752],[143.62,-38.765],[143.55,-38.765],[143.47,-38.715],[143.39,-38.679],[143.3,-38.68],[143.2,-38.695],[143.155,-38.697],[143.104,-38.663],[143.07,-38.645],[142.995,-38.617],[142.93,-38.607],[142.877,-38.603],[142.78,-38.55],[142.65,-38.45],[142.53,-38.39]];
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $=id=>document.getElementById(id);
+const grid=$('grid'),cap=$('cap'),status=$('status');
+
+/* ---------- votes & comments store ----------
+   Per la versione su GitHub Pages: incolla qui la configurazione web di Firebase
+   (Impostazioni progetto → Le tue app → SDK setup → Config). Lascia null per usare Claude. */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyB-I5_3HxrAmvC_O8oGLns20gxjZNtNQ4o",
+  authDomain: "australia-c1094.firebaseapp.com",
+  projectId: "australia-c1094",
+  storageBucket: "australia-c1094.firebasestorage.app",
+  messagingSenderId: "1032204747523",
+  appId: "1:1032204747523:web:d5ba3296e30a566c821f36"
+};
+let notes=[],ratings=[],me=null,names={},db=null,user=null,mode='loading';
+const local={get(k){try{return JSON.parse(localStorage.getItem(k)||'[]')}catch(e){return[]}},put(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const safeId=s=>String(s).replace(/[^A-Za-z0-9_\-.~:@+]/g,'_').slice(0,120);
+async function resolveNames(){
+ if(!user)return;const ids=[...new Set([...notes.map(n=>n.uid),...ratings.map(r=>r.uid)])].filter(Boolean);
+ if(!ids.length)return;try{const ps=await user.profiles(ids);ids.forEach(id=>{names[id]=(ps&&ps[id]&&ps[id].name)||''})}catch(e){}
+ renderSocial();
+}
+const loadJs=src=>new Promise((ok,ko)=>{const e=document.createElement('script');e.src=src;e.onload=ok;e.onerror=ko;document.head.appendChild(e)});
+let myName='';
+function authUI(){
+ const nk=$('nick'),tx=$('nickTxt'),b=$('authBtn');nk.hidden=false;
+ if(me){tx.textContent='Collegato come '+(myName||'utente Google');b.textContent='Esci';b.className=''}
+ else{tx.textContent='Per votare e commentare serve un account Google.';b.textContent='Accedi con Google';b.className='go'}
+}
+async function signIn(){
+ const prov=new firebase.auth.GoogleAuthProvider();
+ try{await firebase.auth().signInWithPopup(prov)}
+ catch(e){
+  if(e&&(e.code==='auth/popup-blocked'||e.code==='auth/operation-not-supported-in-this-environment')){try{await firebase.auth().signInWithRedirect(prov)}catch(e2){}}
+  else if(e&&e.code!=='auth/popup-closed-by-user'&&e.code!=='auth/cancelled-popup-request'){status.textContent='Accesso non riuscito. Se hai aperto il link da WhatsApp o Instagram, aprilo in Safari o Chrome e riprova.'}
+ }
+}
+function needLogin(){status.textContent='Accedi con Google per votare e commentare.';$('authBtn').focus();$('nick').scrollIntoView({block:'center'})}
+async function initFirebase(){
+ const v='https://www.gstatic.com/firebasejs/10.12.2/';
+ await loadJs(v+'firebase-app-compat.js');await loadJs(v+'firebase-auth-compat.js');await loadJs(v+'firebase-firestore-compat.js');
+ firebase.initializeApp(FIREBASE_CONFIG);
+ db=firebase.firestore();mode='fb';me=null;authUI();
+ $('authBtn').addEventListener('click',()=>{me?firebase.auth().signOut():signIn()});
+ firebase.auth().onAuthStateChanged(u=>{me=u?u.uid:null;myName=u?(u.displayName||u.email||''):'';authUI();renderSocial()});
+ let got=0;const done=()=>{if(++got===2)status.textContent='Voti e commenti sono condivisi con tutti quelli che aprono questa pagina.'};
+ const err=()=>{status.textContent='Impossibile caricare voti e commenti: controlla la configurazione di Firebase.'};
+ db.collection('notes').onSnapshot(s=>{notes=s.docs.map(d=>({id:d.id,...d.data()}));done();renderSocial()},err);
+ db.collection('ratings').onSnapshot(s=>{ratings=s.docs.map(d=>({id:d.id,...d.data()}));done();renderSocial()},err);
+}
+async function initStore(){
+ if(FIREBASE_CONFIG){try{await initFirebase();return}catch(e){mode='loading';db=null;me=null}}
+ const t=setTimeout(()=>{if(mode==='loading'){status.textContent='Voti e commenti non sono ancora raggiungibili: riprova tra poco.'}},10000);
+ try{db=await claude.use('db');user=await claude.use('user')}catch(e){db=null}
+ if(db&&user){try{me=await user.id()}catch(e){me=null}}
+ if(!db||!me){clearTimeout(t);mode='local';me='local';notes=local.get('mel-notes');ratings=local.get('mel-ratings');
+  status.textContent='Voti e commenti vengono salvati solo in questo browser.';renderSocial();return}
+ mode='db';let got=0;const done=()=>{if(++got>=2){clearTimeout(t);status.textContent='Voti e commenti sono condivisi con chi ha accesso a questa pagina.'}};
+ db.collection('notes').onSnapshot(s=>{notes=s.docs.map(d=>({id:d.id,...d.data()}));if(!s.metadata.fromCache)done();renderSocial();resolveNames()},e=>{clearTimeout(t);status.textContent='Impossibile caricare i commenti.'});
+ db.collection('ratings').onSnapshot(s=>{ratings=s.docs.map(d=>({id:d.id,...d.data()}));if(!s.metadata.fromCache)done();renderSocial();resolveNames()},e=>{clearTimeout(t);status.textContent='Impossibile caricare i voti.'});
+}
+async function setRating(p,v){
+ const mine=ratings.find(r=>r.p===p&&r.uid===me);const nv=mine&&mine.v===v?0:v;
+ if(mode==='fb'){if(!me){needLogin();return}const ref=db.collection('ratings').doc('p'+p+'_'+me);
+  try{nv?await ref.set({p,uid:me,v:nv,t:Date.now()}):await ref.delete()}catch(e){status.textContent='Voto non salvato, riprova.'}return}
+ if(mode==='local'){ratings=ratings.filter(r=>!(r.p===p&&r.uid===me));if(nv)ratings.push({p,uid:me,v:nv});local.put('mel-ratings',ratings);renderSocial();return}
+ const ref=db.collection('ratings').doc(safeId('p'+p+'-'+me));
+ try{nv?await ref.set({p,uid:me,v:nv,t:Date.now()}):await ref.delete()}catch(e){status.textContent=e&&e.code==='invalid_argument'?'Non hai i permessi per votare su questa pagina.':'Voto non salvato, riprova.'}
+}
+async function addNote(p,text){
+ const doc={p,uid:me,text:text.slice(0,1000),t:Date.now()};
+ if(mode==='fb'){
+  if(!me){needLogin();return false}
+  try{await db.collection('notes').add({...doc,name:(myName||'').slice(0,40)});return true}catch(e){status.textContent='Commento non salvato, riprova.';return false}}
+ if(mode==='local'){notes.push({id:'l'+doc.t,...doc});local.put('mel-notes',notes);renderSocial();return true}
+ try{await db.collection('notes').add(doc);return true}catch(e){status.textContent=e&&e.code==='invalid_argument'?'Non hai i permessi per commentare su questa pagina.':'Commento non salvato, riprova.';return false}
+}
+async function delNote(id){
+ if(mode==='local'){notes=notes.filter(n=>n.id!==id);local.put('mel-notes',notes);renderSocial();return}
+ try{await db.collection('notes').doc(id).delete()}catch(e){status.textContent='Commento non eliminato.'}
+}
+const stats=p=>{const rs=ratings.filter(r=>r.p===p&&r.v>0);return{n:rs.length,avg:rs.length?rs.reduce((a,r)=>a+r.v,0)/rs.length:0,mine:(ratings.find(r=>r.p===p&&r.uid===me)||{}).v||0}};
+const who=x=>x.uid===me?'Tu':(names[x.uid]||x.name||'Qualcuno');
+const fmtT=t=>{try{return new Date(t).toLocaleDateString('it-IT',{day:'numeric',month:'short'})}catch(e){return''}};
+function renderSocial(){
+ P.forEach(p=>{
+  const s=stats(p.n),card=$('p'+p.n);if(!card)return;
+  card.querySelectorAll('.stars button').forEach((b,i)=>b.classList.toggle('f',i<s.mine));
+  card.querySelector('.avg').textContent=s.n?`Media ${s.avg.toFixed(1).replace('.',',')} su ${s.n} vot${s.n>1?'i':'o'}`:'Nessun voto';
+  const ns=notes.filter(x=>x.p===p.n).sort((a,b)=>(a.t||0)-(b.t||0));
+  card.querySelector('summary').textContent=`Commenti (${ns.length})`;
+  card.querySelector('.cm').innerHTML=ns.map(x=>`<li><div class="who"><span>${esc(who(x))} · ${esc(fmtT(x.t))}</span>${x.uid===me?`<button data-del="${esc(x.id)}">Elimina</button>`:''}</div><div class="txt">${esc(x.text||'')}</div></li>`).join('')||'<li class="pnote" style="background:none;padding:0">Ancora nessun commento.</li>';
+ });
+ if(sortBy==='v')applySort();
+}
+
+/* ---------- cards ---------- */
+let sortBy='n';
+grid.innerHTML=P.map(p=>`<article class="card${p.c=='citta'?' city':p.c=='nic'?' nic':p.c=='ani'?' ani':''}" id="p${p.n}" data-n="${p.n}">
+ <div class="top" data-go="${p.n}" tabindex="0" role="button" aria-label="Mostra ${esc(p.name)} sulla mappa"><div class="num">${p.n}</div><div><h3>${esc(p.name)}</h3><div class="time">${p.c=='citta'?'In città':'Da Melbourne: '+esc(p.time)}</div></div></div>
+ <p>${esc(p.desc)}</p>${p.list?'<ul>'+p.list.map(l=>'<li>'+esc(l)+'</li>').join('')+'</ul>':''}
+ <div class="tips">${dayOf(p.n).map(d=>'<span class="day">NAZ-ILA · '+esc(d)+'</span>').join('')}${p.tips.map(t=>'<span>'+esc(t)+'</span>').join('')}</div>
+ <table><tbody>${p.price.map(([a,b])=>`<tr><td>${esc(a)}</td><td class="${b==='Gratis'?'free':''}">${esc(b)}</td></tr>`).join('')}</tbody></table>
+ ${p.pnote?`<p class="pnote">${esc(p.pnote)}</p>`:''}
+ <div class="rate"><div class="stars" role="group" aria-label="Il tuo voto">${[1,2,3,4,5].map(v=>`<button data-p="${p.n}" data-v="${v}" aria-label="${v} stell${v>1?'e':'a'}">★</button>`).join('')}</div><span class="avg">Nessun voto</span></div>
+ <details><summary>Commenti (0)</summary><ul class="cm"></ul>
+  <form data-p="${p.n}"><textarea maxlength="1000" placeholder="Scrivi un commento…" aria-label="Commento su ${esc(p.name)}"></textarea><button type="submit">Aggiungi</button></form></details>
+ <div class="links"><a href="https://www.google.com/search?tbm=isch&q=${encodeURIComponent(p.q)}" target="_blank" rel="noopener">Foto ↗</a><a class="alt" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.q)}" target="_blank" rel="noopener">Google Maps ↗</a></div>
+</article>`).join('');
+function applySort(){
+ const order=[...P].sort((a,b)=>{if(sortBy==='n')return a.n-b.n;const A=stats(a.n),B=stats(b.n);return B.avg-A.avg||B.n-A.n||a.n-b.n});
+ order.forEach(p=>grid.appendChild($('p'+p.n)));
+}
+grid.addEventListener('click',e=>{
+ const st=e.target.closest('.stars button');if(st){setRating(+st.dataset.p,+st.dataset.v);return}
+ const dl=e.target.closest('[data-del]');if(dl){delNote(dl.dataset.del);return}
+ const go=e.target.closest('[data-go]');if(go){sel(+go.dataset.go,false,true);$('map').scrollIntoView({block:'center'})}
+});
+grid.addEventListener('keydown',e=>{const go=e.target.closest('[data-go]');if(go&&(e.key==='Enter'||e.key===' ')){e.preventDefault();sel(+go.dataset.go,false,true);$('map').scrollIntoView({block:'center'})}});
+grid.addEventListener('submit',async e=>{e.preventDefault();const f=e.target,ta=f.querySelector('textarea'),v=ta.value.trim();if(!v)return;
+ const b=f.querySelector('button');b.disabled=true;if(await addNote(+f.dataset.p,v))ta.value='';b.disabled=false});
+document.querySelectorAll('.sort button').forEach(b=>b.addEventListener('click',()=>{sortBy=b.dataset.s;document.querySelectorAll('.sort button').forEach(x=>x.setAttribute('aria-pressed',x===b));applySort()}));
+
+/* ---------- map ---------- */
+const svg=d3.select('#map'),box=$('map');
+const gMap=svg.append('g'),gOver=svg.append('g');
+const bounds={type:'MultiPoint',coordinates:[[141.25,-39.25],[147.2,-36.6]]},boundsM={type:'MultiPoint',coordinates:[[142.3,-39.15],[146.5,-37.0]]};
+const proj=d3.geoMercator();const path=d3.geoPath(proj);
+let geo=null,T=d3.zoomIdentity,cur=0,filt='all';
+const zoom=d3.zoom().scaleExtent([0.45,25]).filter(e=>(e.type!=='wheel'||e.ctrlKey||e.metaKey)&&!e.button).on('zoom',e=>{T=e.transform;gMap.attr('transform',T);place()});
+svg.call(zoom).on('dblclick.zoom',null);
+function size(){
+ const W=box.clientWidth,H=box.clientHeight;proj.fitExtent([[10,10],[W-10,H-10]],W<600?boundsM:bounds);
+ zoom.translateExtent([[-W*.6,-H*.6],[W*1.6,H*1.6]]);return[W,H];
+}
+function drawBase(){
+ if(!geo)return;size();
+ const lines=f=>f.g;
+ gMap.html('');
+ gMap.append('path').attr('class','land').attr('d',path(geo.land));
+ gMap.selectAll('.r0').data(geo.roads.filter(r=>!r.m)).join('path').attr('class','r0').attr('d',r=>path(r.g));
+ gMap.selectAll('.r1').data(geo.roads.filter(r=>r.m)).join('path').attr('class','r1').attr('d',r=>path(r.g));
+ gMap.append('path').attr('class','gor').attr('d',path({type:'LineString',coordinates:GOR}));
+ gMap.attr('transform',T);place();
+}
+function place(){
+ const k=T.k,pt=(lon,lat)=>T.apply(proj([lon,lat]));
+ const sea=[['Oceano Meridionale',143.2,-39.1,1],['Stretto di Bass',145.3,-39.05,1],['Port Phillip',144.86,-38.12,2],['Western Port',145.3,-38.36,5]];
+ gOver.html(
+  sea.filter(s=>k>=s[3]).map(([n,lo,la])=>{const[x,y]=pt(lo,la);return`<text class="sealbl" x="${x}" y="${y}" text-anchor="middle">${esc(n)}</text>`}).join('')+
+  PARKS.filter(s=>k>=s[3]).map(([n,lo,la])=>{const[x,y]=pt(lo,la);return`<text class="park" x="${x}" y="${y}" text-anchor="middle">${esc(n)}</text>`}).join('')+
+  TOWNS.filter(t=>k>=t[3]).map(([n,lo,la,,big])=>{const[x,y]=pt(lo,la);return`<circle class="dot" cx="${x}" cy="${y}" r="${big?3.5:2.5}"/><text class="town${big?' big':''}" x="${x+6}" y="${y-5}">${esc(n)}</text>`}).join('')+
+  [...P].sort((a,b)=>(a.n===cur)-(b.n===cur)).map(p=>{const[x,y]=pt(p.lon,p.lat);const off=!shown(p);
+   return`<g class="mk${p.c=='citta'?' city':p.c=='nic'?' nic':p.c=='ani'?' ani':''}${p.n===cur?' on':''}${off?' off':''}" data-n="${p.n}" tabindex="0" role="button" aria-label="${esc(p.name)}"><circle cx="${x}" cy="${y}" r="15"/><text x="${x}" y="${y}">${p.n}</text></g>`}).join(''));
+}
+function shown(p){return filt==='all'||p.c===filt||(DAYS[filt]&&DAYS[filt].n.includes(p.n))}
+function fitTo(pts){
+ if(!pts.length)return;const[W,H]=[box.clientWidth,box.clientHeight];
+ const xy=pts.map(p=>proj([p.lon,p.lat]));const xs=xy.map(a=>a[0]),ys=xy.map(a=>a[1]);
+ const x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
+ const k=Math.min(8,Math.max(1,Math.min((W-200)/Math.max(x1-x0,1),(H-160)/Math.max(y1-y0,1))));
+ svg.transition().duration(matchMedia('(prefers-reduced-motion: reduce)').matches?0:750).call(zoom.transform,d3.zoomIdentity.translate(W/2,H/2).scale(k).translate(-(x0+x1)/2,-(y0+y1)/2));
+}
+function zoomTo(p){
+ const[W,H]=[box.clientWidth,box.clientHeight];const[x,y]=proj([p.lon,p.lat]);
+ svg.transition().duration(matchMedia('(prefers-reduced-motion: reduce)').matches?0:750).call(zoom.transform,d3.zoomIdentity.translate(W/2,H/2).scale(p.z).translate(-x,-y));
+}
+function sel(n,scroll,zoomIn){
+ cur=n;document.querySelectorAll('.card').forEach(e=>e.classList.toggle('on',+e.dataset.n===n));
+ const p=P.find(q=>q.n===n);if(!p)return;
+ cap.innerHTML='<b>'+p.n+'. '+esc(p.name)+'</b><span>'+(p.c=='citta'?'In città':'Da Melbourne: '+esc(p.time))+'</span>';
+ place();if(zoomIn)zoomTo(p);
+ if(scroll)$('p'+n).scrollIntoView({block:'start'});
+}
+gOver.on('click',e=>{const g=e.target.closest('.mk');if(g)sel(+g.dataset.n,true,false)});
+gOver.on('keydown',e=>{const g=e.target.closest('.mk');if(g&&(e.key==='Enter'||e.key===' ')){e.preventDefault();sel(+g.dataset.n,true,false)}});
+$('zin').onclick=()=>svg.transition().duration(300).call(zoom.scaleBy,1.8);
+$('zout').onclick=()=>svg.transition().duration(300).call(zoom.scaleBy,1/1.8);
+$('zreset').onclick=()=>svg.transition().duration(400).call(zoom.transform,d3.zoomIdentity);
+document.querySelectorAll('.bar button').forEach(b=>b.addEventListener('click',()=>{
+ filt=b.dataset.f;document.querySelectorAll('.bar button').forEach(x=>x.setAttribute('aria-pressed',x===b));
+ P.forEach(p=>$('p'+p.n).classList.toggle('hide',!shown(p)));place();
+ if(DAYS[filt]){const pts=P.filter(shown);fitTo(pts);if(sortBy==='n')DAYS[filt].n.forEach(n=>grid.appendChild($('p'+n)))}else applySort();
+}));
+const ro=new ResizeObserver(()=>{drawBase()});ro.observe(box);
+size();place();
+fetch('geo.json').then(r=>r.json()).then(d=>{geo=d;drawBase()}).catch(()=>{cap.innerHTML='<span>Non riesco a caricare la mappa.</span>'});
+initStore();
+}
+</script>
+</body>
+</html>

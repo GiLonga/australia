@@ -1,0 +1,32 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Solo chi ha fatto l'accesso con un account Google può scrivere.
+    function isGoogle() {
+      return request.auth != null && request.auth.token.firebase.sign_in_provider == 'google.com';
+    }
+
+    // Commenti: tutti leggono; chi ha fatto l'accesso con Google scrive i propri e cancella solo i propri.
+    match /notes/{id} {
+      allow read: if true;
+      allow create: if isGoogle()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.p is int
+        && request.resource.data.text is string && request.resource.data.text.size() <= 1000
+        && request.resource.data.name is string && request.resource.data.name.size() <= 40;
+      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
+    }
+
+    // Voti: un voto per persona per posto (id = p<numero>_<uid>), da 1 a 5.
+    match /ratings/{id} {
+      allow read: if true;
+      allow create, update: if isGoogle()
+        && id == 'p' + string(request.resource.data.p) + '_' + request.auth.uid
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.v is int
+        && request.resource.data.v >= 1 && request.resource.data.v <= 5;
+      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
+    }
+  }
+}
