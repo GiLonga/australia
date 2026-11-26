@@ -92,6 +92,7 @@ table{border-collapse:collapse;width:100%;font-size:15px}
 td{padding:5px 0;border-top:1px solid var(--line);vertical-align:top}
 td:last-child{text-align:right;white-space:nowrap;font-weight:600;padding-left:10px}
 .free{color:var(--park)}
+.eur{display:block;font-weight:400;font-size:.85em;opacity:.7;white-space:nowrap}
 .pnote{font-size:13px;color:var(--mut)}
 .rate{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;border-top:1px solid var(--line);padding-top:10px}
 .stars{display:flex}
@@ -170,7 +171,7 @@ footer{color:var(--mut);font-size:14px;padding-top:0}
   </ul>
  </div>
 </section>
-<footer class="band"><div class="wrap">Prezzi in dollari australiani (AUD) per un adulto, controllati sui siti ufficiali a novembre 2026: possono cambiare, verificate prima di prenotare. I tempi di guida partono dal centro di Melbourne e non tengono conto del traffico. Dati della mappa: OpenStreetMap (costa, tramite geo-maps) e Natural Earth (strade).</div></footer>
+<footer class="band"><div class="wrap">Prezzi in dollari australiani (AUD) per un adulto, controllati sui siti ufficiali a novembre 2026: possono cambiare, verificate prima di prenotare. Gli importi in euro sono indicativi, al cambio di 1 AUD = 0,605 € (26 novembre 2026), arrotondati all'euro. I tempi di guida partono dal centro di Melbourne e non tengono conto del traffico. Dati della mappa: OpenStreetMap (costa, tramite geo-maps) e Natural Earth (strade).</div></footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 <script>
@@ -226,6 +227,8 @@ const P=[
  {n:48,c:'food',name:'Daylesford e Hepburn Springs',lat:-37.348,lon:144.143,z:6,time:'1 h 30',desc:"La zona delle sorgenti minerali del Victoria: terme e spa, un lago con un sentiero intorno, caffè, mercatini e ristoranti. Si abbina bene a Hanging Rock (n. 29).",tips:['Terme','Cibo'],price:[['Paese, lago e sorgenti','Gratis'],['Terme e spa','Variabile']],q:'Daylesford Lake Victoria'}
 ];
 const DAYS={d20:{l:'Dom 20',n:[1,31]},d21:{l:'Lun 21',n:[12,32,33,11,34,24,10,30,31]},d22:{l:'Mar 22',n:[2,26,35,3,4,14,36,6,38,39]},d23:{l:'Mer 23',n:[37,15,40,41,27]}};
+const AUD_EUR=0.605;
+const eur=b=>/\d/.test(b)?'≈ '+b.replace(/\s*AUD/g,'').replace(/^circa\s*/,'').replace(/\$?(\d+(?:,\d+)?)/g,(m,x)=>'€'+Math.round(parseFloat(x.replace(',','.'))*AUD_EUR)):'';
 const dayOf=n=>Object.values(DAYS).filter(d=>d.n.includes(n)).map(d=>d.l);
 const TOWNS=[['Melbourne',144.963,-37.814,1,1],['Geelong',144.36,-38.15,1,1],['Ballarat',143.85,-37.56,1,1],['Daylesford',144.143,-37.348,3],['Warrnambool',142.48,-38.383,1,1],['Torquay',144.326,-38.331,2],['Anglesea',144.186,-38.407,4],['Lorne',143.977,-38.541,2],['Apollo Bay',143.671,-38.757,2],['Port Campbell',142.995,-38.619,3],['Halls Gap',142.519,-37.137,3],['Healesville',145.514,-37.654,3],['Belgrave',145.355,-37.909,4],['Sorrento',144.741,-38.339,3],['Queenscliff',144.661,-38.267,4],['Frankston',145.125,-38.144,3],['Cowes',145.239,-38.452,3],['Inverloch',145.729,-38.633,4],['Tidal River',146.32,-39.031,3],['Colac',143.585,-38.339,2],['Ararat',142.93,-37.284,2],['St Kilda',144.98,-37.868,6],['Brighton',144.99,-37.918,6],['Fitzroy',144.978,-37.8,7],['Forrest',143.715,-38.522,3],['Beech Forest',143.567,-38.637,4],['Peterborough',142.877,-38.603,3],['Portland',141.604,-38.343,1,1],['Bacchus Marsh',144.44,-37.675,3],['Buxton',145.71,-37.42,3],['Bright',146.96,-36.73,2],['Sea Lake',142.85,-35.5,1],['Traralgon',146.54,-38.195,2],['Mildura',142.16,-34.19,1,1],['Woodend',144.53,-37.355,3],['Lara',144.405,-38.02,4],['Portsea',144.71,-38.32,4],['Olinda',145.367,-37.857,5],['Timboon',142.979,-38.484,4],['Princetown',143.155,-38.697,4]];
 const PARKS=[['Great Otway NP',143.55,-38.66,2],['Grampians NP',142.42,-37.25,1],['Wilsons Promontory NP',146.33,-39.1,1],['Port Campbell NP',143.0,-38.66,4],['Dandenong Ranges NP',145.39,-37.86,4],['Mornington Peninsula NP',144.84,-38.47,4],['Mount Buffalo NP',146.77,-36.78,2],['Cathedral Range SP',145.76,-37.4,3],['Tarra-Bulga NP',146.56,-38.44,3]];
@@ -333,7 +336,7 @@ grid.innerHTML=P.map(p=>`<article class="card${p.c=='citta'?' city':p.c=='nic'?'
  <div class="top" data-go="${p.n}" tabindex="0" role="button" aria-label="Mostra ${esc(p.name)} sulla mappa"><div class="num">${p.n}</div><div><h3>${esc(p.name)}</h3><div class="time">${p.c=='citta'?'In città':'Da Melbourne: '+esc(p.time)}</div></div></div>
  <p>${esc(p.desc)}</p>${p.list?'<ul>'+p.list.map(l=>'<li>'+esc(l)+'</li>').join('')+'</ul>':''}
  <div class="tips">${dayOf(p.n).map(d=>'<span class="day">NAZ-ILA · '+esc(d)+'</span>').join('')}${p.tips.map(t=>'<span>'+esc(t)+'</span>').join('')}</div>
- <table><tbody>${p.price.map(([a,b])=>`<tr><td>${esc(a)}</td><td class="${b==='Gratis'?'free':''}">${esc(b)}</td></tr>`).join('')}</tbody></table>
+ <table><tbody>${p.price.map(([a,b])=>`<tr><td>${esc(a)}</td><td class="${b==='Gratis'?'free':''}">${esc(b)}${eur(b)?`<span class="eur">${esc(eur(b))}</span>`:''}</td></tr>`).join('')}</tbody></table>
  ${p.pnote?`<p class="pnote">${esc(p.pnote)}</p>`:''}
  <div class="rate"><div class="stars" role="group" aria-label="Il tuo voto">${[1,2,3,4,5].map(v=>`<button data-p="${p.n}" data-v="${v}" aria-label="${v} stell${v>1?'e':'a'}">★</button>`).join('')}</div><span class="avg">Nessun voto</span></div>
  <details><summary>Commenti (0)</summary><ul class="cm"></ul>
